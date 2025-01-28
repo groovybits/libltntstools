@@ -2,6 +2,7 @@
 #include <libltntstools/ltntstools.h>
 #include <unistd.h>
 #include <libavformat/avformat.h>
+#include <libavcodec/avcodec.h>
 #include <libavutil/dict.h>
 #include <libavutil/fifo.h>
 
@@ -29,12 +30,12 @@ struct ltntstools_audioanalyzer_stream_s
 #define ES_FIFO_PROC_SIZE (2048)
 #define ES_FIFO_MAX_SIZE (32768)
     unsigned char  *esbuf;
-    AVFifoBuffer   *esfifo;
+    AVFifo   *esfifo;
 
 #define TS_FIFO_MAX_SIZE (128 * 188)
 #define TS_BUF_MAX_SIZE (32 * 188)
     pthread_mutex_t tsmutex;
-    AVFifoBuffer   *tsfifo;
+    AVFifo   *tsfifo;
     unsigned char  *tsbuf;   /* Disconnect the writer from the reader thread via this fifo */
 
     void           *pesExtractor;
@@ -204,22 +205,6 @@ static void decode(struct ltntstools_audioanalyzer_ctx_s *ctx, struct ltntstools
         }
 #endif
 
-        if (ctx->verbose >= 2) {
-            int bytes = stream->decoded_frame->nb_samples * sample_size * stream->codecContext->channels;
-            printf("pid 0x%04x decoded %d bytes\n", stream->pid, bytes);
-
-            for (int i = 0; i < 2; i++) {
-                printf("pid 0x%04x plane%d: ", stream->pid, i);
-                uint8_t *p = (uint8_t *)stream->decoded_frame->data[i];
-                for (int j = 0; j < stream->decoded_frame->nb_samples * sample_size; j++) {
-                    printf("%02x ", *(p++));
-                    if (j > 31)
-                        break;
-                }
-                printf("\n");
-            }
-        }
-
         if (stream->sampleFormat == AV_SAMPLE_FMT_FLTP) {
             /* Stereo planes */
             for (int ch = 0; ch < 2; ch++) {
@@ -271,8 +256,8 @@ static void *ltntstools_audioanalyzer_stream_threadfunc(void *p)
                 continue;
 
             pthread_mutex_lock(&stream->tsmutex);
-            while (av_fifo_size(stream->tsfifo) >= TS_BUF_MAX_SIZE) {
-                av_fifo_generic_read(stream->tsfifo, stream->tsbuf, TS_BUF_MAX_SIZE, NULL);
+            while (av_fifo_can_read(stream->tsfifo) >= TS_BUF_MAX_SIZE/188) {
+                av_fifo_read(stream->tsfifo, stream->tsbuf, TS_BUF_MAX_SIZE/188);
                 ltntstools_pes_extractor_write(stream->pesExtractor, stream->tsbuf, TS_BUF_MAX_SIZE / 188);
             }
             pthread_mutex_unlock(&stream->tsmutex);
@@ -297,9 +282,9 @@ static void *pes_callback(void *userContext, struct ltn_pes_packet_s *pes)
     stream->pesCallbackCount++;
 
     /* Push the PES data into a fifo */
-    av_fifo_generic_write(stream->esfifo, pes->data, pes->dataLengthBytes, NULL);
+    av_fifo_write(stream->esfifo, pes->data, pes->dataLengthBytes/ES_FIFO_PROC_SIZE);
 
-    while (av_fifo_size(stream->esfifo) >= ES_FIFO_PROC_SIZE) {
+    while (av_fifo_can_read(stream->esfifo) >= 1/*ES_FIFO_PROC_SIZE*/) {
         if (!stream->decoded_frame) {
             if (!(stream->decoded_frame = av_frame_alloc())) {
                 fprintf(stderr, "Could not allocate audio frame\n");
@@ -310,7 +295,7 @@ static void *pes_callback(void *userContext, struct ltn_pes_packet_s *pes)
         /* Copy the es into a buffer, we don't know how much data the parser needs.
          * we'll drain the fifo later by the read amount.
          */
-        av_fifo_generic_peek(stream->esfifo, stream->esbuf, ES_FIFO_PROC_SIZE, NULL);
+        av_fifo_peek(stream->esfifo, stream->esbuf, 1/*ES_FIFO_PROC_SIZE*/, 0/*NULL*/);
 
         /* Submit to the parser/codec for decompression. */
         int plen = av_parser_parse2(stream->parser, stream->codecContext,
@@ -321,7 +306,7 @@ static void *pes_callback(void *userContext, struct ltn_pes_packet_s *pes)
             fprintf(stderr, "%s() Error while parsing, continuing\n", __func__);
         }
 
-        av_fifo_drain(stream->esfifo, plen);
+        av_fifo_drain2(stream->esfifo, plen);
 
         if (stream->pkt->size) {
             decode(ctx, stream);
@@ -383,8 +368,8 @@ int ltntstools_audioanalyzer_stream_add(void *hdl, uint16_t pid, uint8_t streamI
 
     stream->esbuf = malloc(ES_FIFO_PROC_SIZE);
     stream->tsbuf = malloc(TS_BUF_MAX_SIZE);
-    stream->tsfifo = av_fifo_alloc(TS_FIFO_MAX_SIZE);
-    stream->esfifo = av_fifo_alloc(ES_FIFO_MAX_SIZE);
+    stream->tsfifo = (AVFifo *) av_fifo_alloc2(TS_BUF_MAX_SIZE/188, 188, 0);
+    stream->esfifo = (AVFifo *) av_fifo_alloc2(ES_FIFO_MAX_SIZE/ES_FIFO_PROC_SIZE, ES_FIFO_PROC_SIZE, 0);
 
     /* Bring up libavcodec */
     stream->codec = avcodec_find_decoder(stream->codecID);
@@ -428,8 +413,8 @@ void ltntstools_audioanalyzer_stream_remove(void *hdl, uint16_t pid)
 
     free(stream->esbuf);
     free(stream->tsbuf);
-    av_fifo_free(stream->tsfifo);
-    av_fifo_free(stream->esfifo);
+    av_fifo_freep2(&stream->tsfifo);
+    av_fifo_freep2(&stream->esfifo);
     avcodec_free_context(&stream->codecContext);
     av_frame_free(&stream->decoded_frame);
     av_packet_free(&stream->pkt);
@@ -466,7 +451,7 @@ ssize_t ltntstools_audioanalyzer_write(void *hdl, const uint8_t *pkts, unsigned 
          * feed a fifo and return quickly. The thread will take care of the rest.
          */
         pthread_mutex_lock(&stream->tsmutex);
-        av_fifo_generic_write(stream->tsfifo, (void *)pkt, 188, NULL);
+        av_fifo_write(stream->tsfifo, (void *)pkt, 1);
         pthread_mutex_unlock(&stream->tsmutex);
         count++;
     }
