@@ -1,5 +1,15 @@
 [package]
-name = "libltntstools-sys"
+name = "libltntstools-sys-mpegts_to_s3"
+version = "0.1.0"
+description = "libltntstools-sys"
+keywords = ["mpegts", "udp"]
+categories = ["command-line-utilities"]
+readme = "README.md"
+license-file = "LICENSE"
+homepage = "https://github.com/LTNGlobal-opensource/libltntstools"
+repository = "https://github.com/LTNGlobal-opensource/libltntstools"
+authors = ["stoth"]
+
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
