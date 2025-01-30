@@ -1,8 +1,8 @@
 [workspace]
 resolver = "2"
 members = [
-    "rust/libltntstools",
-    "rust/libltntstools-sys",
+    "rust/libltntstools-mpegts_to_s3",
+    "rust/libltntstools-sys-mpegts_to_s3",
 ]
 
 [workspace.package]
