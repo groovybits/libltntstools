@@ -7,11 +7,14 @@ readme = "README.md"
 license = "LGPL-V2.1"
 homepage = "https://github.com/LTNGlobal-opensource/libltntstools"
 repository = "https://github.com/LTNGlobal-opensource/libltntstools"
-version.workspace = true
-edition.workspace = true
-authors.workspace = true
+version = "0.1.0"
+edition = "2021"
+authors = [
+    "Jan Alexander Steffens (heftig) <jan.steffens@ltnglobal.com>",
+]
 
 [dependencies]
-libc.workspace = true
 log = "0.4.22"
 sys = { package = "libltntstools-sys-mpegts_to_s3", path = "../libltntstools-sys" }
+anyhow = "1.0.86"
+libc = "0.2.155"
