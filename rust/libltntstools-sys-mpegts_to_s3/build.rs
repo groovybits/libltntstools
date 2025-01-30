@@ -227,7 +227,7 @@ fn main() -> Fallible<()> {
 
     let libltntstools_srcdir = srcdir.join("../..");
     let libltntstools_builddir = builddir.join("libltntstools");
-    run_autoreconf(&libltntstools_srcdir)?;
+    //run_autoreconf(&libltntstools_srcdir)?;
     run_configure(
         &libltntstools_srcdir,
         &libltntstools_builddir,
