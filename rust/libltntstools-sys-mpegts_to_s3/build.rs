@@ -99,6 +99,30 @@ fn run_autoreconf(dir: &Path) -> Fallible<()> {
 
     let status = Command::new("autoreconf")
         .arg("-fvi")
+        .current_dir(dir)
+        .status()
+        .with_context(|| format!("Failed to autoreconf {}", dir.display()))?;
+
+    ensure!(
+        status.success(),
+        "Failed to autoreconf in {}; exit status {}",
+        dir.display(),
+        status,
+    );
+    Ok(())
+}
+
+fn run_autoreconf_ltst(dir: &Path) -> Fallible<()> {
+    if dir.join("configure").exists() {
+        println!(
+            "{} is already bootstrapped, skipping autoreconf",
+            dir.display(),
+        );
+        return Ok(());
+    }
+
+    let status = Command::new("autoreconf")
+        .arg("-fvi")
         .current_dir(dir.join("/.."))
         .status()
         .with_context(|| format!("Failed to autoreconf {}", dir.display()))?;
@@ -227,7 +251,7 @@ fn main() -> Fallible<()> {
 
     let libltntstools_srcdir = srcdir.join("../..");
     let libltntstools_builddir = builddir.join("libltntstools");
-    run_autoreconf(&libltntstools_srcdir)?;
+    run_autoreconf_ltst(&libltntstools_srcdir)?;
     run_configure(
         &libltntstools_srcdir,
         &libltntstools_builddir,
