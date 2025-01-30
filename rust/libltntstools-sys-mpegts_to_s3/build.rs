@@ -121,7 +121,7 @@ where
             "{} is already configured, skipping configure",
             builddir.display(),
         );
-        return Ok(());
+        //return Ok(());
     }
 
     fs::create_dir_all(builddir)
