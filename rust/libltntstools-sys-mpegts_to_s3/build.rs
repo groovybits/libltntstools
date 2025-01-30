@@ -99,7 +99,7 @@ fn run_autoreconf(dir: &Path) -> Fallible<()> {
 
     let status = Command::new("autoreconf")
         .arg("-fvi")
-        .current_dir(dir)
+        .current_dir(dir.join("/.."))
         .status()
         .with_context(|| format!("Failed to autoreconf {}", dir.display()))?;
 
