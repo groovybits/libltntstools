@@ -15,6 +15,6 @@ authors = [
 
 [dependencies]
 log = "0.4.22"
-sys = { package = "libltntstools-sys-mpegts_to_s3", path = "../libltntstools-sys" }
+sys = { package = "libltntstools-sys-mpegts_to_s3", path = "../libltntstools-sys-mpegts_to_s3" }
 anyhow = "1.0.86"
 libc = "0.2.155"
