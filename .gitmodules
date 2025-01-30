@@ -1,9 +1,9 @@
 [submodule "ffmpeg"]
-	path = rust/libltntstools-sys/ffmpeg
+	path = rust/libltntstools-sys-mpegts_to_s3/ffmpeg
 	url = https://github.com/heftig/FFmpeg-ltn
 	branch = libltntstools
 [submodule "libdvbpsi"]
-	path = rust/libltntstools-sys/libdvbpsi
+	path = rust/libltntstools-sys-mpegts_to_s3/libdvbpsi
 	url = https://github.com/heftig/libdvbpsi
 	branch = libltntstools
 	ignore = untracked
