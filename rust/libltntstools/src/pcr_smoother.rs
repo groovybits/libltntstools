@@ -77,6 +77,20 @@ where
         }
     }
 
+    /// Returns how many bytes are currently buffered in the smoother.
+    pub fn get_size(&self) -> i64 {
+        unsafe {
+            sys::smoother_pcr_get_size(self.handle)
+        }
+    }
+
+    /// Resets the smoother (flushes all queued data + resets internal PCR offsets).
+    pub fn reset(&mut self) {
+        unsafe {
+            sys::smoother_pcr_reset(self.handle);
+        }
+    }
+
     pub fn items_per_second(&self) -> i32 {
         self.items_per_second
     }
