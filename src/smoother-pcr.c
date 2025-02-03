@@ -372,7 +372,7 @@ static int _queueProcess(struct smoother_pcr_context_s *ctx, int64_t uS)
 
 			/* Throw a packet loss warning if the queue gets confused, should never happen. */
 			if (ctx->last_seqno && ctx->last_seqno + 1 != e->seqno) {
-				printf("%s() seq err %" PRIu64 " vs %" PRIu64 "\n", __func__, ctx->last_seqno, e->seqno);
+				printf("%s() seq err %" PRIu64 " vs %" PRIu64 "\n",__func__, ctx->last_seqno, e->seqno);
 			}
 			ctx->last_seqno = e->seqno;
 		}
@@ -561,7 +561,7 @@ int smoother_pcr_write2(void *hdl, const unsigned char *buf, int lengthBytes,
 
 #if LOCAL_DEBUG
 		printf("ctx->pcrFirst reset to %" PRIi64 ", ctx->walltimeFirstPCRuS %" PRIi64 "\n",
-		ctx->pcrFirst, ctx->walltimeFirstPCRuS);
+			ctx->pcrFirst, ctx->walltimeFirstPCRuS);
 #endif
 	}
 
@@ -579,7 +579,7 @@ int smoother_pcr_write2(void *hdl, const unsigned char *buf, int lengthBytes,
 	item->seqno = ctx->seqno++;
 	ctx->totalSizeBytes += item->lengthBytes;
 	if (item->lengthBytes <= 0) {
-		fprintf(stderr, "%s() bug: item->lengthBytes = %d\n", __func__, item->lengthBytes);
+		fprintf(stderr, "%s() bug: adding item with negative bytes item->lengthBytes = %d\n", __func__, item->lengthBytes);
 	}
 #if 0
 	itemPrint(item);
@@ -644,6 +644,7 @@ int smoother_pcr_write(void *hdl, const unsigned char *buf, int lengthBytes, str
 		/* Find the first two PCRs for the user preferred PID, skip any other pids/pcrs */
 		struct ltntstools_pcr_position_s *pcr[2] = { NULL, NULL };
 		pcrCount = 0;
+
 		for (int i = 0; i < arrayLength; i++) {
 			struct ltntstools_pcr_position_s *e = &array[i];
 			if (e->pid == ctx->pcrPID) {
@@ -699,14 +700,14 @@ int smoother_pcr_write(void *hdl, const unsigned char *buf, int lengthBytes, str
 			ctx->didPcrReset = 1;
 
 			/* Fixup the pcrIntervalPerPacketTicks and preset the reset the internal walltime and other pcr clocks */
-			printf("Auto-correcting PCR schedule from big jump. "
+			printf("Auto-correcting PCR schedule due to PCR timewrap or large gap. "
 				"pcrIntervalPerPacketTicks was %" PRIi64 ", we revert to %" PRIi64 "\n",
 				pcrIntervalPerPacketTicks, ctx->pcrIntervalPerPacketTicksLast);
 			pcrIntervalPerPacketTicks = ctx->pcrIntervalPerPacketTicksLast;
 			pcrIntervalTicks = ctx->pcrIntervalTicksLast;
 		}
 
-		ctx->measuredLatencyMs = ltntstools_scr_diff(ctx->pcrHead, ctx->pcrTail) / 27000LL;
+		ctx->measuredLatencyMs = ltntstools_scr_diff(ctx->pcrHead, ctx->pcrTail) / 27000;
 #if LOCAL_DEBUG
 		{
 			/* Dump the first and second PCR we found. */
@@ -714,8 +715,8 @@ int smoother_pcr_write(void *hdl, const unsigned char *buf, int lengthBytes, str
 			printf("e.pcr = %14" PRIi64 ", %8" PRIu64 ", %04x\n", pcr[1]->pcr, pcr[1]->offset, pcr[1]->pid);
 			//printf("pcrHead %" PRIi64 " pcrTail %" PRIi64 "\n", ctx->pcrHead, ctx->pcrTail);
 			printf("pcrIntervalPerPacketTicks = %" PRIi64 ", pktCount %d byteCount %d pcrDidReset %d totalSizeBytes %" PRIi64 ", latency %" PRIi64 " ms\n",
-			pcrIntervalPerPacketTicks, pktCount, byteCount, ctx->didPcrReset, ctx->totalSizeBytes,
-			ctx->measuredLatencyMs);
+				pcrIntervalPerPacketTicks, pktCount, byteCount, ctx->didPcrReset, ctx->totalSizeBytes,
+				ctx->measuredLatencyMs);
 		}
 #endif
 
@@ -724,27 +725,23 @@ int smoother_pcr_write(void *hdl, const unsigned char *buf, int lengthBytes, str
 
 		int idx = 0;
 		int rem = byteCount;
-
-		/* 4) We feed data in 7*188 chunks to smoother_pcr_write2() by default. */
 		while (rem > 0) {
 			int cplen = 7 * 188;
 			if (cplen > rem)
 				cplen = rem;
 
-			smoother_pcr_write2(ctx, &ctx->ba.buf[pcr[0]->offset + idx], cplen,
-				pcrValue, pcrIntervalPerPacketTicks, pcrIntervalTicks);
+			smoother_pcr_write2(ctx, &ctx->ba.buf[ pcr[0]->offset + idx ], cplen, pcrValue,
+				pcrIntervalPerPacketTicks, pcrIntervalTicks);
 
 			/* Update the PCR based on the number of packets we're writing into the smoother, adjusting
 			 * PCR by the correct number of ticks per transport packet.
 			 */
-			pcrValue = ltntstools_scr_add(pcrValue,
-				pcrIntervalPerPacketTicks * (cplen / 188));
+			pcrValue = ltntstools_scr_add(pcrValue, pcrIntervalPerPacketTicks * (cplen / 188));
 
 			rem -= cplen;
 			idx += cplen;
 		}
 
-		/* 5) Trim out everything up to pcr[1]->offset from partial buffer. */
 		byte_array_trim(&ctx->ba, pcr[1]->offset);
 
 		free(array);
@@ -814,8 +811,7 @@ void smoother_pcr_reset(void *hdl)
 	ctx->ba.lengthBytes = 0;
 
 	while (!xorg_list_is_empty(&ctx->itemsBusy)) {
-		struct smoother_pcr_item_s *item = 
-			xorg_list_first_entry(&ctx->itemsBusy, struct smoother_pcr_item_s, list);
+		struct smoother_pcr_item_s *item = xorg_list_first_entry(&ctx->itemsBusy, struct smoother_pcr_item_s, list);
 		itemReset(item);
 		xorg_list_del(&item->list);
 		xorg_list_append(&item->list, &ctx->itemsFree);
@@ -823,4 +819,3 @@ void smoother_pcr_reset(void *hdl)
 
 	pthread_mutex_unlock(&ctx->listMutex);
 }
-
