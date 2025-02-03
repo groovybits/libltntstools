@@ -134,6 +134,7 @@ const uint8_t *byte_array_addr(struct byte_array_s *ba)
 {
 	return ba->buf;
 }
+/* byte_array.... ---------- */
 
 struct smoother_pcr_context_s
 {
@@ -187,6 +188,7 @@ static inline uint64_t makeTimestampFromTimeval(struct timeval *ts)
 	uint64_t t = ((int64_t)ts->tv_sec * 1000000LL) + ts->tv_usec;
 	return t;
 }
+
 static inline uint64_t makeTimestampFromNow()
 {
 	struct timeval now;
@@ -266,9 +268,9 @@ static uint64_t getScheduledOutputuS(struct smoother_pcr_context_s *ctx, int64_t
  */
 static int _queueProcess(struct smoother_pcr_context_s *ctx, int64_t uS)
 {
-    /* Take any node on the Busy list up to and including items with a timestamp of uS.
-     * Put them on a local list so we can free the holding mutex as fast as possible
-     */
+	/* Take any node on the Busy list up to and including items with a timestamp of uS.
+	 * Put them on a local list so we can free the holding mutex as fast as possible
+	 */
 	struct xorg_list loclist;
 	xorg_list_init(&loclist);
 
@@ -375,7 +377,7 @@ static int _queueProcess(struct smoother_pcr_context_s *ctx, int64_t uS)
 	}
 
 	/* Take the mutex again to return the spent items to the free list */
-	e = NULL; next = NULL;
+	e = NULL, next = NULL;
 	pthread_mutex_lock(&ctx->listMutex);
 	xorg_list_for_each_entry_safe(e, next, &loclist, list) {
 		itemReset(e);
@@ -389,7 +391,7 @@ static int _queueProcess(struct smoother_pcr_context_s *ctx, int64_t uS)
 
 extern int ltnpthread_setname_np(pthread_t thread, const char *name);
 
-static void *_threadFunc(void *p)
+static void * _threadFunc(void *p)
 {
 	struct smoother_pcr_context_s *ctx = (struct smoother_pcr_context_s *)p;
 
@@ -531,6 +533,7 @@ int smoother_pcr_write2(void *hdl, const unsigned char *buf, int lengthBytes,
 		pthread_mutex_unlock(&ctx->listMutex);
 		return -1;
 	}
+
 	xorg_list_del(&item->list);
 	pthread_mutex_unlock(&ctx->listMutex);
 
@@ -542,6 +545,7 @@ int smoother_pcr_write2(void *hdl, const unsigned char *buf, int lengthBytes,
 		item->buf = realloc(item->buf, lengthBytes);
 		item->maxLengthBytes = lengthBytes;
 	}
+
 	memcpy(item->buf, buf, lengthBytes);
 	item->lengthBytes = lengthBytes;
 
@@ -549,7 +553,7 @@ int smoother_pcr_write2(void *hdl, const unsigned char *buf, int lengthBytes,
 	item->pcrdata.pcr = pcrValue;
 	if (ctx->pcrFirst == -1) {
 #if LOCAL_DEBUG
-	        printf("ctx->pcrFirst    was    %" PRIi64 ", ctx->walltimeFirstPCRuS %" PRIi64 "\n",
+		printf("ctx->pcrFirst    was    %" PRIi64 ", ctx->walltimeFirstPCRuS %" PRIi64 "\n",
 			ctx->pcrFirst, ctx->walltimeFirstPCRuS);
 #endif
 		ctx->pcrFirst = item->pcrdata.pcr;
@@ -564,6 +568,7 @@ int smoother_pcr_write2(void *hdl, const unsigned char *buf, int lengthBytes,
 	/* Reset number of packets received since the last PCR. */
 	/* We use this along with an estimated input bitrate to calculated a sche duled output time. */
 	ctx->bitsReceivedSinceLastPCR = 0;
+
 	ctx->pcrTail = item->pcrdata.pcr; /* Cache the last stream PCR */
 
 	/* Figure out when this packet should be scheduled for output */
@@ -652,6 +657,7 @@ int smoother_pcr_write(void *hdl, const unsigned char *buf, int lengthBytes, str
 			if (pcrCount == 3) /* we only need the first two for scheduling logic */
 				break;
 		}
+
 		/* We need atleast two PCRs for interval and timing calculations */
 		if (pcrCount < 2) {
 			/* Bail out, we'll try again later when more packets are available */
