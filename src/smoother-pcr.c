@@ -523,7 +523,7 @@ int smoother_pcr_write2(void *hdl, const unsigned char *buf, int lengthBytes,
 
 	pthread_mutex_lock(&ctx->listMutex);
 
-#define MAX_ITEMS_TOTAL 5000
+#define MAX_ITEMS_TOTAL 9999999
 
 	/* Count how many items we have in free+busy. */
 	int totalCount = 0;
