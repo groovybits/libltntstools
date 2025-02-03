@@ -76,8 +76,9 @@ void byte_array_free(struct byte_array_s *ba)
 int byte_array_append(struct byte_array_s *ba, const uint8_t *buf, int lengthBytes)
 {
 	int newLengthBytes = ba->lengthBytes + lengthBytes;
+
 	if (newLengthBytes > ba->maxLengthBytes) {
-		/* reallocate in a simple linear fashion */
+		/* XXX: consider exponential reallocation */
 		ba->buf = realloc(ba->buf, newLengthBytes);
 		ba->maxLengthBytes = newLengthBytes;
 	}
@@ -305,6 +306,7 @@ static int _queueProcess(struct smoother_pcr_context_s *ctx, int64_t uS)
 	uint64_t last_seq = 0;
 	xorg_list_for_each_entry_safe(e, next, &ctx->itemsBusy, list) {
 		countSeq++;
+
 		if (countSeq > 1) {
 			if (last_seq + 1 != e->seqno) {
 				/* Almost certainly, the schedule US time is out of order, warn. */
@@ -332,6 +334,7 @@ static int _queueProcess(struct smoother_pcr_context_s *ctx, int64_t uS)
 	 */
 	xorg_list_for_each_entry_safe(e, next, &loclist, list) {
 		if (ctx->outputCb) {
+
 			/* Create a PCR value for EVERY packet in the buffer,
 			 * let the callee decide what to do with them.
 			 */
@@ -354,7 +357,6 @@ static int _queueProcess(struct smoother_pcr_context_s *ctx, int64_t uS)
 			uint64_t sn = e->seqno;
 
 			ctx->outputCb(ctx->userContext, e->buf, e->lengthBytes, array, arrayLength);
-
 			if (x != e->lengthBytes) {
 				printf("%s() ERROR %d != %d, mangled returned object length\n", __func__, x, e->lengthBytes);
 			}
@@ -418,7 +420,6 @@ static void * _threadFunc(void *p)
 			usleep(1 * 1000);
 		}
 	}
-
 	ctx->threadRunning = 1;
 	ctx->threadTerminated = 1;
 
@@ -436,7 +437,6 @@ int smoother_pcr_alloc(void **hdl, void *userContext, smoother_pcr_output_callba
 	xorg_list_init(&ctx->itemsFree);
 	xorg_list_init(&ctx->itemsBusy);
 	pthread_mutex_init(&ctx->listMutex, NULL);
-
 	ctx->userContext = userContext;
 	ctx->outputCb = cb;
 	ctx->itemLengthBytes = itemLengthBytes;
@@ -447,7 +447,6 @@ int smoother_pcr_alloc(void **hdl, void *userContext, smoother_pcr_output_callba
 	ctx->pcrPID = pcrPID;
 	ctx->latencyuS = latencyMS * 1000;
 	ctx->lastPcrResetTime = time(NULL);
-
 	byte_array_init(&ctx->ba, 8000 * 188); /* Initial size of 300mbps with 40ms PCR intervals */
 
 	ltn_histogram_alloc_video_defaults(&ctx->histReceive, "receive arrival times");
@@ -470,6 +469,7 @@ int smoother_pcr_alloc(void **hdl, void *userContext, smoother_pcr_output_callba
 	pthread_create(&ctx->threadId, NULL, _threadFunc, ctx);
 
 	*hdl = ctx;
+
 	return 0;
 }
 
