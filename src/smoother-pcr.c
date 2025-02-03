@@ -1,12 +1,6 @@
 /* Copyright LiveTimeNet, Inc. 2021. All Rights Reserved. */
 
 #include <unistd.h>
-#include <time.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/time.h>
-#include <pthread.h>
 
 #include "libltntstools/ltntstools.h"
 #include "xorg-list.h"
