@@ -7,7 +7,7 @@
 
 #define LOCAL_DEBUG 0
 
-#define MAX_PARTIAL_BUFFER_SIZE (50 * 1024 * 1024) /* 50MB default */
+#define MAX_PARTIAL_BUFFER_SIZE (100 * 1024 * 1024) /* 100MB default */
 #define INITIAL_BYTE_ARRAY_SIZE (8000 * 188)
 #define CLAMP_FAR_FUTURE_MS (30 * 1000) /* 30 seconds in the future */
 
@@ -73,6 +73,7 @@ int byte_array_append(struct byte_array_s *ba, const uint8_t *buf, int lengthByt
 
 	if (newLengthBytes > ba->maxLengthBytes) {
 		/* XXX: consider exponential reallocation */
+		fprintf(stderr, "SmootherPCR: byte_array_append reallocating buffer from %d to %d bytes\n", ba->maxLengthBytes, newLengthBytes);
 		ba->buf = realloc(ba->buf, newLengthBytes);
 		ba->maxLengthBytes = newLengthBytes;
 	}
@@ -84,10 +85,12 @@ int byte_array_append(struct byte_array_s *ba, const uint8_t *buf, int lengthByt
 			 * that implies we can't fit the new data at all, so let's 
 			 * discard everything and skip appending.
 			 */
+			fprintf(stderr, "SmootherPCR: byte_array_append Dumping ring buffer of %d bytes, buffer is full. %d > %d\n", over, newLengthBytes, MAX_PARTIAL_BUFFER_SIZE);
 			ba->lengthBytes = 0;
 			return ba->lengthBytes;
 		} else {
 			/* Discard `over` oldest bytes to make room for new data. */
+			fprintf(stderr, "SmootherPCR: byte_array_append Discarding %d bytes, buffer is full. %d > %d\n", over, newLengthBytes, MAX_PARTIAL_BUFFER_SIZE);
 			memmove(ba->buf, ba->buf + over, ba->lengthBytes - over);
 			ba->lengthBytes -= over;
 			newLengthBytes = ba->lengthBytes + lengthBytes;
