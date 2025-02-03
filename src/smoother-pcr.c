@@ -231,7 +231,7 @@ static struct smoother_pcr_item_s *itemAlloc(int lengthBytes)
 #if LOCAL_DEBUG
 static void _queuePrintList(struct smoother_pcr_context_s *ctx, struct xorg_list *head, const char *name)
 {
-    int totalItems = 0;
+	int totalItems = 0;
 
 	printf("Queue %s -->\n", name);
 	struct smoother_pcr_item_s *e = NULL, *next = NULL;
@@ -291,9 +291,9 @@ static int _queueProcess(struct smoother_pcr_context_s *ctx, int64_t uS)
 				redundantItems++;
 			}
 		}
-        /* TODO: The list is time ordered so we shoud be able to break
-         * when we find a time that's beyond out window, and save CPU time.
-         */
+		/* TODO: The list is time ordered so we shoud be able to break
+		 * when we find a time that's beyond out window, and save CPU time.
+		 */
 	}
 
 	/* Make sure the busy list is contigious */
@@ -577,7 +577,7 @@ int smoother_pcr_write2(void *hdl, const unsigned char *buf, int lengthBytes,
 		fprintf(stderr, "%s() bug: item->lengthBytes = %d\n", __func__, item->lengthBytes);
 	}
 #if 0
-        itemPrint(item);
+	itemPrint(item);
 #endif
 
 	/* Check the last item on the queue. scheduled time should never go backwards to
