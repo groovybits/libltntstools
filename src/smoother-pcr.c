@@ -72,10 +72,21 @@ int byte_array_append(struct byte_array_s *ba, const uint8_t *buf, int lengthByt
 	int newLengthBytes = ba->lengthBytes + lengthBytes;
 
 	if (newLengthBytes > ba->maxLengthBytes) {
-		/* XXX: consider exponential reallocation */
-		fprintf(stderr, "SmootherPCR: byte_array_append reallocating buffer from %d to %d bytes\n", ba->maxLengthBytes, newLengthBytes);
-		ba->buf = realloc(ba->buf, newLengthBytes);
-		ba->maxLengthBytes = newLengthBytes;
+		/* Exponential growth up to MAX_PARTIAL_BUFFER_SIZE */
+		int newCapacity = ba->maxLengthBytes;
+		while (newCapacity < newLengthBytes) {
+			newCapacity *= 2;
+			if (newCapacity > MAX_PARTIAL_BUFFER_SIZE) {
+				newCapacity = MAX_PARTIAL_BUFFER_SIZE;
+				break;
+			}
+		}
+
+		fprintf(stderr, "SmootherPCR: byte_array_append reallocating buffer from %d to %d bytes\n",
+			ba->maxLengthBytes, newCapacity);
+
+		ba->buf = realloc(ba->buf, newCapacity);
+		ba->maxLengthBytes = newCapacity;
 	}
 
 	if (newLengthBytes > MAX_PARTIAL_BUFFER_SIZE) {
@@ -511,6 +522,26 @@ int smoother_pcr_write2(void *hdl, const unsigned char *buf, int lengthBytes,
 	struct smoother_pcr_context_s *ctx = (struct smoother_pcr_context_s *)hdl;
 
 	pthread_mutex_lock(&ctx->listMutex);
+
+#define MAX_ITEMS_TOTAL 5000
+
+	/* Count how many items we have in free+busy. */
+	int totalCount = 0;
+	struct smoother_pcr_item_s *it;
+	xorg_list_for_each_entry(it, &ctx->itemsFree, list) {
+		totalCount++;
+	}
+	xorg_list_for_each_entry(it, &ctx->itemsBusy, list) {
+		totalCount++;
+	}
+
+	/* If we're at the max, discard new data instead of allocating more. */
+	if (totalCount >= MAX_ITEMS_TOTAL && xorg_list_is_empty(&ctx->itemsFree)) {
+		pthread_mutex_unlock(&ctx->listMutex);
+		fprintf(stderr, "SmootherPCR: Hit max items (%d). Discarding input.\n", totalCount);
+		return -1;
+	}
+
 	if (xorg_list_is_empty(&ctx->itemsFree)) {
 		/* Grow free list if needed. */
 		for (int i = 0; i < 64; i++) {
@@ -520,7 +551,6 @@ int smoother_pcr_write2(void *hdl, const unsigned char *buf, int lengthBytes,
 			xorg_list_append(&item->list, &ctx->itemsFree);
 		}
 	}
-
 
 	struct smoother_pcr_item_s *item = NULL;
 	if (!xorg_list_is_empty(&ctx->itemsFree)) {
