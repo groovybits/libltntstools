@@ -71,13 +71,6 @@ int byte_array_append(struct byte_array_s *ba, const uint8_t *buf, int lengthByt
 {
 	int newLengthBytes = ba->lengthBytes + lengthBytes;
 
-	if (newLengthBytes > ba->maxLengthBytes) {
-		/* XXX: consider exponential reallocation */
-		fprintf(stderr, "SmootherPCR: byte_array_append reallocating buffer from %d to %d bytes\n", ba->maxLengthBytes, newLengthBytes);
-		ba->buf = realloc(ba->buf, newLengthBytes);
-		ba->maxLengthBytes = newLengthBytes;
-	}
-
 	if (newLengthBytes > MAX_PARTIAL_BUFFER_SIZE) {
 		int over = newLengthBytes - MAX_PARTIAL_BUFFER_SIZE;
 		if (over > ba->lengthBytes) {
@@ -95,6 +88,13 @@ int byte_array_append(struct byte_array_s *ba, const uint8_t *buf, int lengthByt
 			ba->lengthBytes -= over;
 			newLengthBytes = ba->lengthBytes + lengthBytes;
 		}
+	}
+
+	if (newLengthBytes > ba->maxLengthBytes) {
+		/* XXX: consider exponential reallocation */
+		fprintf(stderr, "SmootherPCR: byte_array_append reallocating buffer from %d to %d bytes\n", ba->maxLengthBytes, newLengthBytes);
+		ba->buf = realloc(ba->buf, newLengthBytes);
+		ba->maxLengthBytes = newLengthBytes;
 	}
 
 	memcpy(ba->buf + ba->lengthBytes, buf, lengthBytes);
