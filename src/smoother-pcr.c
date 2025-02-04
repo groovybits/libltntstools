@@ -615,17 +615,18 @@ int smoother_pcr_write(void *hdl, const unsigned char *buf, int lengthBytes, str
 	ltn_histogram_interval_print(STDOUT_FILENO, ctx->histTransmit, 5);
 #endif
 
-	/* 1) Append new data to partial buffer (with internal limit checks). */
-	byte_array_append(&ctx->ba, buf, lengthBytes);
-
 	/* If we STILL have no pcrFirst and the buffer is huge, we forcibly discard. */
 	if (ctx->pcrFirst == -1 && ctx->ba.lengthBytes > MAX_PARTIAL_BUFFER_SIZE / 2) {
 		fprintf(stderr,
 			"[smoother_pcr_write] WARN: No PCR found, partial buffer is large (%d bytes). Discarding.\n",
 			ctx->ba.lengthBytes);
-		ctx->ba.lengthBytes = 0;
+		byte_array_free(&ctx->ba);
+		byte_array_init(&ctx->ba, 8000 * 188);
 		return 0;
 	}
+
+	/* 1) Append new data to partial buffer (with internal limit checks). */
+	byte_array_append(&ctx->ba, buf, lengthBytes);
 
 	int pcrCount;
 	do {
