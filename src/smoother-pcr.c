@@ -8,7 +8,7 @@
 #define LOCAL_DEBUG 0
 
 #define MAX_PARTIAL_BUFFER_SIZE (100 * 1024 * 1024) /* 100MB default */
-#define INITIAL_BYTE_ARRAY_SIZE (8000 * 188)
+#define INITIAL_BYTE_ARRAY_SIZE (16000 * 188)
 #define CLAMP_FAR_FUTURE_MS (30 * 1000) /* 30 seconds in the future */
 
 struct smoother_pcr_item_s
@@ -444,7 +444,7 @@ int smoother_pcr_alloc(void **hdl, void *userContext, smoother_pcr_output_callba
 	ctx->pcrPID = pcrPID;
 	ctx->latencyuS = latencyMS * 1000;
 	ctx->lastPcrResetTime = time(NULL);
-	byte_array_init(&ctx->ba, 8000 * 188); /* Initial size of 300mbps with 40ms PCR intervals */
+	byte_array_init(&ctx->ba, 16000 * 188); /* Initial size of 300mbps with 40ms PCR intervals */
 
 	ltn_histogram_alloc_video_defaults(&ctx->histReceive, "receive arrival times");
 	ltn_histogram_alloc_video_defaults(&ctx->histTransmit, "transmit arrival times");
@@ -621,7 +621,7 @@ int smoother_pcr_write(void *hdl, const unsigned char *buf, int lengthBytes, str
 			"[smoother_pcr_write] WARN: No PCR found, partial buffer is large (%d bytes). Discarding.\n",
 			ctx->ba.lengthBytes);
 		byte_array_free(&ctx->ba);
-		byte_array_init(&ctx->ba, 8000 * 188);
+		byte_array_init(&ctx->ba, 16000 * 188);
 		return 0;
 	}
 
