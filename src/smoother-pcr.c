@@ -8,7 +8,7 @@
 #define LOCAL_DEBUG 0
 
 #define MAX_PARTIAL_BUFFER_SIZE (100 * 1024 * 1024) /* 100MB default */
-#define INITIAL_BYTE_ARRAY_SIZE (32000 * 188)
+#define INITIAL_BYTE_ARRAY_SIZE (8000 * 188)
 #define CLAMP_FAR_FUTURE_MS (30 * 1000) /* 30 seconds in the future */
 
 struct smoother_pcr_item_s
@@ -71,24 +71,6 @@ int byte_array_append(struct byte_array_s *ba, const uint8_t *buf, int lengthByt
 {
 	int newLengthBytes = ba->lengthBytes + lengthBytes;
 
-	if (newLengthBytes > ba->maxLengthBytes) {
-		/* Exponential growth up to MAX_PARTIAL_BUFFER_SIZE */
-		int newCapacity = ba->maxLengthBytes;
-		while (newCapacity < newLengthBytes) {
-			newCapacity *= 2;
-			if (newCapacity > MAX_PARTIAL_BUFFER_SIZE) {
-				newCapacity = MAX_PARTIAL_BUFFER_SIZE;
-				break;
-			}
-		}
-
-		fprintf(stderr, "SmootherPCR: byte_array_append reallocating buffer from %d to %d bytes\n",
-			ba->maxLengthBytes, newCapacity);
-
-		ba->buf = realloc(ba->buf, newCapacity);
-		ba->maxLengthBytes = newCapacity;
-	}
-
 	if (newLengthBytes > MAX_PARTIAL_BUFFER_SIZE) {
 		int over = newLengthBytes - MAX_PARTIAL_BUFFER_SIZE;
 		if (over > ba->lengthBytes) {
@@ -106,6 +88,24 @@ int byte_array_append(struct byte_array_s *ba, const uint8_t *buf, int lengthByt
 			ba->lengthBytes -= over;
 			newLengthBytes = ba->lengthBytes + lengthBytes;
 		}
+	}
+
+	if (newLengthBytes > ba->maxLengthBytes) {
+		/* Exponential growth up to MAX_PARTIAL_BUFFER_SIZE */
+		int newCapacity = ba->maxLengthBytes;
+		while (newCapacity < newLengthBytes) {
+			newCapacity *= 2;
+			if (newCapacity > MAX_PARTIAL_BUFFER_SIZE) {
+				newCapacity = MAX_PARTIAL_BUFFER_SIZE;
+				break;
+			}
+		}
+
+		fprintf(stderr, "SmootherPCR: byte_array_append reallocating buffer from %d to %d bytes\n",
+			ba->maxLengthBytes, newCapacity);
+
+		ba->buf = realloc(ba->buf, newCapacity);
+		ba->maxLengthBytes = newCapacity;
 	}
 
 	memcpy(ba->buf + ba->lengthBytes, buf, lengthBytes);
