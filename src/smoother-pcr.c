@@ -7,7 +7,7 @@
 
 #define LOCAL_DEBUG 0
 
-#define MAX_PARTIAL_BUFFER_SIZE (100 * 1024 * 1024) /* 100MB default */
+#define MAX_PARTIAL_BUFFER_SIZE (1000 * 1024 * 1024) /* 1000MB default */
 #define INITIAL_BYTE_ARRAY_SIZE (16000 * 188)
 #define CLAMP_FAR_FUTURE_MS (30 * 1000) /* 30 seconds in the future */
 
