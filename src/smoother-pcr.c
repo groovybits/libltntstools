@@ -499,7 +499,11 @@ int smoother_pcr_alloc(void **hdl, void *userContext, smoother_pcr_output_callba
 	pthread_cond_init(&ctx->item_add, NULL);
 	xorg_list_init(&ctx->itemsFree);
 	xorg_list_init(&ctx->itemsBusy);
-	pthread_mutex_init(&ctx->listMutex, NULL);
+	pthread_mutexattr_t attr;
+	pthread_mutexattr_init(&attr);
+	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&ctx->listMutex, &attr);
+	pthread_mutexattr_destroy(&attr);
 	ctx->userContext = userContext;
 	ctx->outputCb = cb;
 	ctx->itemLengthBytes = itemLengthBytes;
