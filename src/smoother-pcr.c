@@ -389,7 +389,9 @@ static int _queueProcess(struct smoother_pcr_context_s *ctx, int64_t uS)
 			int x = e->lengthBytes;
 			uint64_t sn = e->seqno;
 
+			pthread_mutex_lock(&ctx->listMutex);
 			ctx->outputCb(ctx->userContext, e->buf, e->lengthBytes, array, arrayLength);
+			pthread_mutex_unlock(&ctx->listMutex);
 			if (x != e->lengthBytes) {
 				printf("%s() ERROR %d != %d, mangled returned object length\n", __func__, x, e->lengthBytes);
 			}
