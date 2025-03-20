@@ -356,11 +356,11 @@ static int _queueProcess(struct smoother_pcr_context_s *ctx, int64_t uS)
 	_queueProcess_checkbusy(ctx, uS, &loclist); /* The performance of this sucks */
 #endif
 
-	pthread_mutex_unlock(&ctx->listMutex);
-
 	if (count <= 0) {
 		return -1; /* Nothing scheduled, bail out early. */
 	}
+
+	pthread_mutex_unlock(&ctx->listMutex);
 
 	/* Process the local list.
 	 * Call the callback with any scheduled packets
@@ -420,7 +420,6 @@ static int _queueProcess(struct smoother_pcr_context_s *ctx, int64_t uS)
 		xorg_list_del(&e->list);
 		xorg_list_append(&e->list, &ctx->itemsFree);
 	}
-	//pthread_mutex_unlock(&ctx->listMutex);
 
 	return 0;
 }
